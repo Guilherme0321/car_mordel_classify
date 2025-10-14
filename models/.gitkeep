@@ -1,0 +1,5 @@
+# Esta pasta contém os modelos treinados
+# Adicione seus arquivos .pth aqui
+
+# Exemplo:
+# best_model_efficientnet_b3_acc_84.81.pth
