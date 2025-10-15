@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from torchvision import transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
 import io
@@ -21,6 +22,13 @@ import logging
 from pathlib import Path
 import uvicorn
 from typing import List, Dict, Any
+import os
+from dotenv import load_dotenv
+import gdown
+import requests
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -41,8 +49,10 @@ class CarClassificationModel:
         self.model_path = Path(model_path)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
+        # Fazer download do modelo se não existir localmente
         if not self.model_path.exists():
-            raise FileNotFoundError(f"Modelo não encontrado: {model_path}")
+            logger.info(f"Modelo não encontrado localmente. Tentando baixar do Google Drive...")
+            self._download_model_from_drive()
         
         # Carregar modelo
         self._load_model()
@@ -51,6 +61,41 @@ class CarClassificationModel:
         self._setup_transforms()
         
         logger.info(f"Modelo carregado com sucesso! Dispositivo: {self.device}")
+    
+    def _download_model_from_drive(self):
+        """Baixa o modelo do Google Drive usando a URL do .env"""
+        try:
+            drive_url = os.getenv('DRIVE_MODEL_URL')
+            
+            if not drive_url or 'SEU_FILE_ID_AQUI' in drive_url:
+                raise ValueError(
+                    "DRIVE_MODEL_URL não configurada corretamente no arquivo .env. "
+                    "Configure a URL do Google Drive com o ID do arquivo."
+                )
+            
+            # Criar diretório se não existir
+            self.model_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            logger.info(f"Baixando modelo do Google Drive...")
+            logger.info(f"URL: {drive_url}")
+            logger.info(f"Destino: {self.model_path}")
+            
+            # Baixar arquivo usando gdown
+            gdown.download(drive_url, str(self.model_path), quiet=False, fuzzy=True)
+            
+            if not self.model_path.exists():
+                raise FileNotFoundError(
+                    f"Falha ao baixar o modelo. Verifique se:\n"
+                    f"1. O arquivo está compartilhado publicamente no Google Drive\n"
+                    f"2. O ID do arquivo está correto no .env\n"
+                    f"3. Você tem conexão com a internet"
+                )
+            
+            logger.info(f"Modelo baixado com sucesso!")
+            
+        except Exception as e:
+            logger.error(f"Erro ao baixar modelo do Google Drive: {e}")
+            raise
     
     def _load_model(self):
         """Carrega o modelo e suas informações"""
@@ -166,8 +211,8 @@ class CarClassificationModel:
                 'error': str(e)
             }
 
-# Configuração do modelo
-MODEL_PATH = "models/best_model_efficientnet_b3_acc_84.81.pth"
+# Configuração do modelo a partir do .env
+MODEL_PATH = os.getenv('MODEL_PATH', 'models/best_model_efficientnet_b3_acc_84.81.pth')
 
 # Inicializar modelo globalmente
 car_model = None
@@ -191,6 +236,15 @@ app = FastAPI(
         "name": "Guilherme0321",
         "url": "https://github.com/Guilherme0321",
     }
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite todas as origens. Para produção, especifique as origens permitidas
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos os headers
 )
 
 @app.on_event("startup")
@@ -296,4 +350,8 @@ async def predict_car(
         raise HTTPException(status_code=500, detail=f"Erro ao processar imagem: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Obter configurações do .env
+    host = os.getenv('API_HOST', '0.0.0.0')
+    port = int(os.getenv('API_PORT', '8000'))
+    
+    uvicorn.run(app, host=host, port=port)
