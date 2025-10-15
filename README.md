@@ -23,16 +23,35 @@ cd car-classification-api
 pip install -r requirements.txt
 ```
 
-### 3. Baixe o modelo treinado
-Coloque o arquivo do modelo treinado na pasta `models/`:
+### 3. Configure as variáveis de ambiente
+Copie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
 ```
-models/best_model_efficientnet_b3_acc_84.81.pth
+
+Edite o arquivo `.env` e configure a URL do modelo no Google Drive:
+```env
+DRIVE_MODEL_URL=https://drive.google.com/uc?id=SEU_FILE_ID_AQUI
+MODEL_PATH=models/best_model_efficientnet_b3_acc_84.81.pth
+API_PORT=8000
+API_HOST=0.0.0.0
 ```
+
+**Como obter o ID do arquivo do Google Drive:**
+1. Faça upload do modelo treinado para o Google Drive
+2. Clique com o botão direito no arquivo → "Obter link"
+3. Altere a permissão para "Qualquer pessoa com o link"
+4. Copie o ID do arquivo da URL (a parte após `/d/` e antes de `/view`)
+   - Exemplo: `https://drive.google.com/file/d/1ABC123xyz456/view`
+   - O ID é: `1ABC123xyz456`
+5. Cole no `.env`: `DRIVE_MODEL_URL=https://drive.google.com/uc?id=1ABC123xyz456`
 
 ### 4. Execute a API
 ```bash
 python main.py
 ```
+
+O modelo será baixado automaticamente do Google Drive na primeira execução.
 
 A API estará disponível em: `http://localhost:8000`
 
