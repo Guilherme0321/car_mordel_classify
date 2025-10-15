@@ -5,14 +5,19 @@ Configurações da Car Classification API
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 # Configurações do modelo
+DRIVE_MODEL_URL = os.getenv('DRIVE_MODEL_URL', '')
 MODEL_PATH = os.getenv("MODEL_PATH", "models/best_model_efficientnet_b3_acc_84.81.pth")
 MODEL_TYPE = "efficientnet_b3"
 
 # Configurações da API
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", 8000))
+HOST = os.getenv("API_HOST", os.getenv("HOST", "0.0.0.0"))
+PORT = int(os.getenv("API_PORT", os.getenv("PORT", "8000")))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 # Configurações de processamento
@@ -28,9 +33,11 @@ def validate_config():
     """Valida as configurações"""
     errors = []
     
-    # Verificar se o modelo existe
-    if not Path(MODEL_PATH).exists():
-        errors.append(f"Modelo não encontrado: {MODEL_PATH}")
+    # Verificar configuração do Google Drive
+    if not DRIVE_MODEL_URL:
+        errors.append("DRIVE_MODEL_URL não está configurada no arquivo .env")
+    elif 'SEU_FILE_ID_AQUI' in DRIVE_MODEL_URL:
+        errors.append("DRIVE_MODEL_URL precisa ser atualizada com o ID real do arquivo no Google Drive")
     
     # Verificar porta
     if not (1000 <= PORT <= 65535):
@@ -40,6 +47,13 @@ def validate_config():
 
 if __name__ == "__main__":
     # Teste das configurações
+    print("=== Configurações da API ===")
+    print(f"DRIVE_MODEL_URL: {DRIVE_MODEL_URL}")
+    print(f"MODEL_PATH: {MODEL_PATH}")
+    print(f"API_HOST: {HOST}")
+    print(f"API_PORT: {PORT}")
+    print()
+    
     errors = validate_config()
     if errors:
         print("❌ Erros de configuração:")
